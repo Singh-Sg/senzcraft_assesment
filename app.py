@@ -1,15 +1,16 @@
+
 from flask import Flask, request, jsonify
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 import tabula
 
+# Initialize Flask app
 app = Flask(__name__)
 
 # Create an engine to connect to the SQLite database
 engine = create_engine("sqlite:///data.db", echo=True)
 Base = declarative_base()
-
 
 # Define models for the tables
 class Contact_Details(Base):
@@ -21,13 +22,11 @@ class Contact_Details(Base):
     Contact_Designation = Column(String)
     Contact_eMail = Column(String)
 
-
 class IntrestTable(Base):
     __tablename__ = "Interest_table"
     Id = Column(Integer, primary_key=True)
     Sl_NO = Column(Integer, ForeignKey("Contact_Details.Sl_NO"))
     Interest = Column(String)
-
 
 # Create the tables in the database
 Base.metadata.create_all(engine)
@@ -35,10 +34,15 @@ Base.metadata.create_all(engine)
 # Create a session to interact with the database
 Session = sessionmaker(bind=engine)
 
-
 # Route to extract table data from PDF file
 @app.route("/uploadfile", methods=["POST"])
 def extract_table():
+    """
+    Extract table data from PDF file and update database.
+
+    Accepts a PDF file and updates the Contact_Details and Interest_table
+    tables in the database based on the extracted data.
+    """
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
 
@@ -101,10 +105,15 @@ def extract_table():
     session.close()
     return jsonify({"success": True}), 201
 
-
 # Route to get all contact data
 @app.route("/contact", methods=["GET"])
 def get_contacts():
+    """
+    Get all contact data.
+
+    Fetches all contact data from the Contact_Details table and their
+    corresponding interests from the Interest_table table.
+    """
     session = Session()
     contacts = session.query(Contact_Details).all()
     interests = session.query(IntrestTable).all()
@@ -112,7 +121,6 @@ def get_contacts():
 
     contact_dict = {}
     for contact in contacts:
-
         contact_dict[contact.Sl_NO] = {
             "Sl_NO": contact.Sl_NO,
             "phone": contact.phone,
@@ -131,10 +139,16 @@ def get_contacts():
 
     return jsonify(contacts_list), 200
 
-
 # Route to get contact data by ID
 @app.route("/contact/<int:id>", methods=["GET"])
 def get_contact_id(id):
+    """
+    Get contact data by ID.
+
+    Fetches contact data from the Contact_Details table and their
+    corresponding interests from the Interest_table table based on the
+    provided ID.
+    """
     session = Session()
     contact = session.query(Contact_Details).filter_by(Sl_NO=id).first()
     interests = session.query(IntrestTable).filter_by(Sl_NO=id).all()
@@ -157,7 +171,6 @@ def get_contact_id(id):
         return (jsonify(data)), 200
     else:
         return jsonify({"error": "Contact not found"}), 404
-
 
 if __name__ == "__main__":
     app.run(debug=True)
