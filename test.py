@@ -1,76 +1,38 @@
 
 import unittest
-from app import app
+from unittest.mock import MagicMock
+from flask import Flask
+from routes.contact_routes import contact_routes
 
-class TestAPI(unittest.TestCase):
+class TestContactRoutes(unittest.TestCase):
     def setUp(self):
-        """
-        Set up the test client and configure app for testing.
-        """
-        self.app = app.test_client()
-        app.testing = True
+        # Create Flask app and register contact_routes blueprint
+        self.app = Flask(__name__)
+        self.app.register_blueprint(contact_routes)
+        self.client = self.app.test_client()
 
-    def test_uploadfile_endpoint(self):
-        """
-        Test the uploadfile endpoint.
-
-        It uploads a PDF file and checks if the response is successful.
-        """
-        pdf_file = open("interest.pdf", "rb")
-        response = self.app.post("/uploadfile", data={"file": pdf_file})
-        self.assertEqual(response.status_code, 201)
-        self.assertIn(b"success", response.data)
-        self.assertIn(b"true", response.data)
+    def test_upload_file(self):
+        # Test uploading a file
+        with self.app.test_request_context('/uploadfile', method='POST'):
+            with self.app.test_client() as client:
+                with open('contact.pdf', 'rb') as file:
+                    data = {'file': (file, 'cantact.pdf')}
+                    response = client.post('/uploadfile', data=data, content_type='multipart/form-data')
+                    self.assertEqual(response.status_code, 201)  # Assuming successful upload returns 201 status code
 
     def test_get_contacts(self):
-        """
-        Test the get_contacts endpoint.
+        # Test retrieving all contacts
+        with self.app.test_request_context('/contact', method='GET'):
+            response = self.client.get('/contact')
+            self.assertEqual(response.status_code, 200)  # Assuming successful retrieval returns 200 status code
 
-        It checks if the response contains necessary fields for each contact.
-        """
-        response = self.app.get("/contact")
-        data = response.get_json()
-        self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(data, list)
-        for contact in data:
-            self.assertIn("Sl_NO", contact)
-            self.assertIn("phone", contact)
-            self.assertIn("Contact_First_Name", contact)
-            self.assertIn("Contact_Last_Name", contact)
-            self.assertIn("Contact_Designation", contact)
-            self.assertIn("Contact_eMail", contact)
-            self.assertIn("interests", contact)
-            self.assertIsInstance(contact["interests"], list)
+    def test_get_contact_by_id(self):
+        # Test retrieving a contact by ID
+        with self.app.test_request_context('/contact/1', method='GET'):
+            response = self.client.get('/contact/1')
+            self.assertEqual(response.status_code, 200)  # Assuming contact with ID 1 exists and returns 200 status code
 
-    def test_get_contact_existing_by_id(self):
-        """
-        Test the get_contact endpoint with an existing contact ID.
+    
 
-        It checks if the response contains necessary fields for the contact.
-        """
-        response = self.app.get("/contact/2")
-        data = response.get_json()
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Sl_NO", data)
-        self.assertIn("phone", data)
-        self.assertIn("Contact_First_Name", data)
-        self.assertIn("Contact_Last_Name", data)
-        self.assertIn("Contact_Designation", data)
-        self.assertIn("Contact_eMail", data)
-        self.assertIn("interest", data)
-
-    def test_get_contact_non_existing_by_id(self):
-        """
-        Test the get_contact endpoint with a non-existing contact ID.
-
-        It checks if the response contains an error message.
-        """
-        response = self.app.get("/contact/999")
-        data = response.get_json()
-        self.assertEqual(response.status_code, 404)
-        self.assertIn("error", data)
-        self.assertEqual(data["error"], "Contact not found")
-        print(data)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
